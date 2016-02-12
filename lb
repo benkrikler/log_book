@@ -7,8 +7,9 @@ cat <<EOF
 $ProgName: [options] [command]
 
 Valid commands:
-  append         Append commands to the log
   init           Initialise a log in the current directory
+  append         Append commands to the log
+  print          Print the contents of the log
 
 Valid global  options:
   -h, --help  
@@ -99,16 +100,20 @@ CommandInit(){
 
 ####### append command
 CommandAppend(){
-        echo "Appending the following to log ($LogFile):"
         set -o history
-        history ${NumHistory:-1} |tee -a "$LogFile"
+        HistoryLines="$(history ${NumHistory:-1})"
+        echo "Appending the following to log ($LogFile):"
+        echo $HistoryLines
+        cat >>"$LogFile" <<EOF
+
+= `pwd` =
+$HistoryLines
+EOF
 }
 
 ####### print command
 CommandPrint(){
-        HISTFILE="$LogFile"
-        set -o history
-        history ${NumHistory:-10}
+        tail -${NumHistory:-10} "$LogFile"
 }
 
 ####### Global command
@@ -121,5 +126,9 @@ case $Command in
                 ;;
         print )  
                 CommandPrint
+                ;;
+        *)
+                echo Error: Unknown command: $Command
+                Usage 1
                 ;;
 esac
