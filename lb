@@ -1,0 +1,125 @@
+#! /bin/bash
+
+ProgName="$0"
+
+function Usage(){
+cat <<EOF
+$ProgName: [options] [command]
+
+Valid commands:
+  append         Append commands to the log
+  init           Initialise a log in the current directory
+
+Valid global  options:
+  -h, --help  
+       Show this help and quit
+  --debug                         
+       Enable debug output
+  -l, --log-file <filename>      
+       Provide the name of a log file to use
+  --log-file-format <filename>   
+       The log file format to search for
+  -n <number>
+       The number of previous commands to append to the log
+  --hist-file <filename>
+       The name of the history file to extract commands from
+EOF
+exit $1
+}
+
+####### Parse options
+Command=append
+DebugStream=/dev/null
+LogFile=""
+LogFileFormat=.log
+Debug=false
+NumHistory=""
+HISTFILE="$HOME/.bash_history"
+
+while [ "$#" != 0 ]; do
+  case "$1" in
+    -h | --help )
+      Usage 0;;
+    --debug )
+      shift;Debug=true; set -x; DebugStream=/dev/stderr ;;
+    -l | --log-file )
+      shift;LogFile="$1" ;;
+    -n )
+      shift;NumHistory="$1" ;;
+    --log-file-format )
+      shift;LogFileFormat ="$1" ;;
+    --hist-file)
+      shift;HISTFILE="$1" ;;
+    -*)
+      echo Unknown option $1 ; Usage 1 ;;
+    *)
+      Command=$1; shift || true;;
+  esac
+done
+
+####### Sanitize options and run checks
+
+####### Locate log file
+FindLogFile(){
+        TargetFile="$1" ;shift
+        Directory="$1" ;shift
+
+        echo Searching for log file in: $Directory >"$DebugStream"
+        if [ "$Directory" == "/" ];then
+                return
+        elif [ -w "$Directory/$TargetFile" ];then
+                echo Found log file>"$DebugStream"
+                echo "$Directory/$TargetFile"
+        else
+                FindLogFile "$TargetFile" "$(dirname "$Directory")"
+        fi
+        return
+}
+
+if [[ "$Command" != init ]] && [ -z "$LogFile" ] ; then
+  LogFile=$(FindLogFile "$LogFileFormat" "$PWD")
+  if [ -z "$LogFile" ];then
+    echo "Error: Cannot find log file ($LogFileFormat) from this directory.  "
+    echo "Please run: \`$ProgName init\` first..."
+    exit 1
+  fi
+fi
+
+####### init command
+CommandInit(){
+  CreateLogAt=""
+  if [ -n "$LogFile" ] ;then
+    CreateLogAt="$LogFile"
+  else
+    CreateLogAt="$LogFileFormat"
+  fi
+  touch "$CreateLogAt"
+  echo Initialised new log at: `readlink -e "$CreateLogAt"`
+}
+
+####### append command
+CommandAppend(){
+        echo "Appending the following to log ($LogFile):"
+        set -o history
+        history ${NumHistory:-1} |tee -a "$LogFile"
+}
+
+####### print command
+CommandPrint(){
+        set -o history
+        history -r "$LogFile"
+        history ${NumHistory:-10}
+}
+
+####### Global command
+case $Command in
+        init) 
+                CommandInit
+                ;;
+        append )  
+                CommandAppend
+                ;;
+        print )  
+                CommandPrint
+                ;;
+esac
