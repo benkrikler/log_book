@@ -106,8 +106,8 @@ CommandAppend(){
 
 ####### print command
 CommandPrint(){
+        HISTFILE="$LogFile"
         set -o history
-        history -r "$LogFile"
         history ${NumHistory:-10}
 }
 
