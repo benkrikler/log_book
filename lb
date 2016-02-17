@@ -46,11 +46,11 @@ while [ "$#" != 0 ]; do
     -l | --log-file )
       shift;LogFile="$1" ;;
     -n )
-      shift;NumHistory="$1" ;;
+      shift;NumHistory="$1";shift ;;
     --log-file-format )
-      shift;LogFileFormat ="$1" ;;
+      shift;LogFileFormat ="$1";shift ;;
     --hist-file)
-      shift;HISTFILE="$1" ;;
+      shift;HISTFILE="$1";shift ;;
     -*)
       echo Unknown option $1 ; Usage 1 ;;
     *)
@@ -101,6 +101,7 @@ CommandInit(){
 ####### append command
 CommandAppend(){
         set -o history
+        set -f
         HistoryLines="$(history ${NumHistory:-1})"
         echo "Appending the following to log ($LogFile):"
         echo $HistoryLines
@@ -109,6 +110,8 @@ CommandAppend(){
 = `pwd` =
 $HistoryLines
 EOF
+        set +o history
+        set +f
 }
 
 ####### print command
